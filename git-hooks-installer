@@ -106,7 +106,7 @@ if [ ! -e Makefile ]; then
 fi
 
 # Hook target already exist in Makefile.
-if grep -E '^hooks:' Makefile; then
+if grep -E '^hooks:' Makefile > /dev/null; then
   return
 fi
 
