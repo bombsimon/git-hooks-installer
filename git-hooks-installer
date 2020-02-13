@@ -1,0 +1,193 @@
+#!/bin/sh
+
+set -eu
+
+check_existing() {
+  file="$1"
+
+  if [ -e "$file" ]; then
+    if [ "$force" -eq 1 ]; then
+      return
+    fi
+
+    printf "File %s already exists! Overwrite? [y/N]: " "$file"
+    read -r  y_or_n
+
+    if [ "$y_or_n" != "y" ]; then
+      echo "Aborting!"
+      exit 1
+    fi
+  fi
+}
+
+__create_script_dir() {
+  if [ ! -d "$script_install_dir" ]; then
+    echo "Creating $script_install_dir"
+    mkdir -p "$script_install_dir"
+  fi
+}
+
+__create_hook_wrapper() {
+  hook_wrapper="$script_install_dir/hook-wrapper"
+  check_existing "$hook_wrapper"
+
+  echo "Creating $hook_wrapper"
+  cp "$script_dir/script/hook-wrapper" "$script_install_to"
+}
+
+__create_install_hooks() {
+  install_hooks="$script_install_dir/install-hooks"
+  check_existing "$install_hooks"
+
+  echo "Creating $install_hooks"
+  cp "$script_dir/script/install-hooks" "$script_install_to"
+}
+
+__create_pre_commit_example() {
+  pre_commit_example="$script_install_dir/pre-commit"
+  check_existing "$pre_commit_example"
+
+  echo "Creating $pre_commit_example"
+  cp "$script_dir/script/pre-commit" "$script_install_to"
+}
+
+__update_script_dir() {
+  # Nothing to do if we're using teh default directory.
+  if [ "$script_install_dir" = "script" ]; then
+    return
+  fi
+
+  for file in hook-wrapper install-hooks; do
+    old_script_dir="SCRIPT_DIR=\"script\""
+    new_script_dir="SCRIPT_DIR=\"$script_install_dir\""
+
+    # shellcheck disable=SC2039
+    if [ "${OSTYPE#*darwin}" != "$OSTYPE" ]; then
+      if gsedz -v > /dev/null 2>&1; then
+        # macOS with GNU sed :)
+        gsed -i "s/^$old_script_dir/$new_script_dir/" "$script_install_to/$file"
+      else
+        # macOS without GNU sed :(
+        sed -i '' "s/^$old_script_dir/$new_script_dir/" "$script_install_to/$file"
+      fi
+    else
+      # Whatever else (hopefully with GNU sed) :)
+      sed -i '' "s/^$old_script_dir/$new_script_dir/" "$script_install_to/$file"
+    fi
+
+  done
+}
+
+__print_help() {
+  echo "$(basename "$0") - Install git hooks wrapper in your project!"
+  echo " "
+  echo "Usage: $(basename "$0") [-f|--force] [-i|--install-path <project>] [project]"
+  echo " "
+  echo "  -h|--help         : Print this help text"
+  echo "  -f|--force        : Don't prompt for yes/no questions, assume yes"
+  echo "  -i|--install-path : The path to install in (defaults to pwd)"
+  echo "  -s|--script-dir   : The name of the directory to use for scripts"
+  echo " "
+}
+
+__print_exit_message() {
+  cat <<-EOF
+
+You're now all set! Commit the new directory and/or files and everyone can enjoy
+the repository specific git hooks. To install the example hook (and any other
+hook), run the install script in "script/install-hooks".
+
+For a list of available git hooks, see https://githooks.com
+EOF
+
+# No makefile exists in project.
+if [ ! -e Makefile ]; then
+  return
+fi
+
+# Hook target already exist in Makefile.
+if grep -E '^hooks:' Makefile; then
+  return
+fi
+
+cat <<-EOF
+---
+It looks like your project is using a Makefile. To add a target which will
+enable users to install all the project hooks, add the following to your
+Makefile:
+
+EOF
+
+echo "${red}.PHONY: hooks"
+echo "hooks:"
+echo "    @script/install-hooks"
+echo "${no_color}"
+}
+
+force=0
+
+# Handle options and allow both space and equal sign separated flags.
+#
+# If the string without '=' is the same as the string, shift it because
+# that means the argument is added with a space between.
+# --install-path /foo/bar
+#
+# If the argument was added with an '=', remove it
+# --install-path=/foo/bar
+while test $# -gt 0; do
+  case "$1" in
+    -h|--help)
+      __print_help
+      exit 0
+      ;;
+    -f|--force)
+      shift
+      force=1
+      ;;
+    -i*|--install-path*)
+      if [ "${1#*=}" = "$1" ]; then
+        shift
+      fi
+
+      install_path=$(echo "$1" | sed 's/^--\{0,1\}i\(nstall-path\)\{0,1\}=//')
+      shift
+      ;;
+    -s*|--script-dir*)
+      if [ "${1#*=}" = "$1" ]; then
+        shift
+      fi
+
+      script_dir=$(echo "$1" | sed 's/^--\{0,1\}s\(cript-dir\)\{0,1\}=//')
+      shift
+      ;;
+    *)
+      break
+      ;;
+  esac
+done
+
+script_install_path="${install_path:-${1:-$(pwd)}}"
+script_install_dir=${script_dir:-"script"}
+script_install_to="$script_install_path/$script_install_dir"
+script_dir=$(cd -- "$(dirname -- "$0")" && pwd)
+
+red="\033[0;31m"
+no_color="\033[0m"
+
+if [ "$force" -ne 1 ]; then
+  printf "Will run %s in ${red}%s${no_color}. Continue? [Y/n]: " "$(basename "$0")" "$script_install_path"
+  read -r y_or_no
+  if [ "$y_or_no" != "" ] && [ "$y_or_no" != "y" ]; then
+    echo "Aborting!"
+    exit 0
+  fi
+fi
+
+__create_script_dir
+__create_hook_wrapper
+__create_install_hooks
+__create_pre_commit_example
+__update_script_dir
+__print_exit_message
+
+# vim set ts=4 sw=4 et:

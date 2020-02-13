@@ -1,0 +1,9 @@
+#!/bin/sh
+
+set -eu
+
+# This is an example file which shows what a pre-commit hook may look like. This
+# will be executed every time you run `git commit`. If a hook has a non zero
+# exit code the git command wont continue.
+
+printf "Thank you %s for your lovely contribution!\n\n" "$USER"
