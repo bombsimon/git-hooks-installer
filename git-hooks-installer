@@ -157,7 +157,7 @@ while test $# -gt 0; do
         shift
       fi
 
-      script_dir=$(echo "$1" | sed 's/^--\{0,1\}s\(cript-dir\)\{0,1\}=//')
+      install_dir=$(echo "$1" | sed 's/^--\{0,1\}s\(cript-dir\)\{0,1\}=//')
       shift
       ;;
     *)
@@ -167,7 +167,7 @@ while test $# -gt 0; do
 done
 
 script_install_path="${install_path:-${1:-$(pwd)}}"
-script_install_dir=${script_dir:-"script"}
+script_install_dir=${install_dir:-"script"}
 script_install_to="$script_install_path/$script_install_dir"
 script_dir=$(cd -- "$(dirname -- "$0")" && pwd)
 
