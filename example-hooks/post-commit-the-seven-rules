@@ -1,0 +1,80 @@
+#!/bin/bash
+
+set -eu
+
+# A subset to warn users when they don't write proper commit messages.
+# See https://chris.beams.io/posts/git-commit/ for details.
+#
+# The seven rules of a great Git commit message:
+#
+# * Separate subject from body with a blank line
+# * Limit the subject line to 50 characters
+# * Capitalize the subject line
+# * Do not end the subject line with a period
+# * Use the imperative mood in the subject line
+# * Wrap the body at 72 characters
+# * Use the body to explain what and why vs. how
+
+last_commit=$(git log --format=%B -n 1 HEAD)
+last_subject=$(echo "$last_commit" | head -1)
+last_body=$(echo "$last_commit" | tail +2)
+number_of_commit_lines=$(echo "$last_commit" | wc -l)
+exit_code=0
+
+
+fail() {
+  message="$1"
+
+  echo "⚠️  $message"
+  exit_code=1
+}
+
+# Separate subject from body with a blank line.
+if [ "$number_of_commit_lines" -gt 1 ]; then
+  second_line=$(echo "$last_commit" | awk 'NR==2')
+
+  if [ ! "$second_line" = "" ]; then
+    fail "Separate subject from body with a blank line"
+  fi
+fi
+
+# Limit subject to 50 characters.
+if [ "${#last_subject}" -gt 50 ]; then
+  fail "Commit subject should not exceed 50 characters"
+fi
+
+# Capitalize the subject line.
+if [[ ! "$last_subject" =~ ^[A-Z] ]]; then
+  fail "Commit message should start with a capital letter"
+fi
+
+# Do not end the subject line with a period
+if [ "${last_subject:$(( ${#last_subject} - 1 )):1}" = "." ]; then
+  fail "Do not end the subject line with a period"
+fi
+
+# Use the imperative mood in the subject line
+if [[ "$last_subject" =~ ^[A-Za-z]+(s|ed|ing) ]]; then
+    fail "Looks like commit message isn't written in imperative form"
+fi
+
+# Wrap the body at 72 characters
+echo "$last_body" | while read -r line; do
+  if [ "${#line}" -gt 72 ]; then
+    fail "Wrap gthe body at 72 characters"
+    break
+  fi
+done
+
+# Use the body to explain what and why vs. how
+# TODO: Send commit body to some trained AI to determine if the message is
+# descriptive or not. /s
+
+if [ ! "$exit_code" -eq 0 ]; then
+  echo " "
+  echo "Some checks failed. See https://chris.beams.io/posts/git-commit for details"
+fi
+
+exit $exit_code
+
+# vim: set sw=2 ts=2 et:
