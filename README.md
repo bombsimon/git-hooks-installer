@@ -35,6 +35,22 @@ Usage: git-hooks-installer [-f|--force] [-i|--install-path <project>] [project]
 $ ~/git/git-hooks-installer/git-hooks-installer /path/to/my/git-project
 ```
 
+### With Git
+
+Since `git` will call executables prefixed with `git-` in your path you can use
+this as a git command if you're located in the root of a git repository.
+
+```sh
+$ export="$PATH:/path/to/git-hooks-installer"
+$ cd /path/to/my/git-project
+$ git hooks-installer
+```
+
+## Examples
+
+There's an [example](example-hooks/) folder with example hooks. Feel free to use
+and/or add new hooks which might be useful.
+
 An example hook will be be added to your project which you may remove. To
 install all the hooks, execute the install script with `script/install-hooks`
 (or the relevant path if you set a custom script directory).
