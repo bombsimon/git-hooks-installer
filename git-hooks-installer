@@ -63,16 +63,11 @@ __update_script_dir() {
 
     # shellcheck disable=SC2039
     if [ "${OSTYPE#*darwin}" != "$OSTYPE" ]; then
-      if gsedz -v > /dev/null 2>&1; then
-        # macOS with GNU sed :)
-        gsed -i "s/^$old_script_dir/$new_script_dir/" "$script_install_to/$file"
-      else
-        # macOS without GNU sed :(
-        sed -i '' "s/^$old_script_dir/$new_script_dir/" "$script_install_to/$file"
-      fi
-    else
-      # Whatever else (hopefully with GNU sed) :)
+      # macOS without GNU sed, needs zero-length extension to skip backup. :(
       sed -i '' "s/^$old_script_dir/$new_script_dir/" "$script_install_to/$file"
+    else
+      # Whatever else (hopefully with GNU sed) which doesn't need extension. :)
+      sed -i "s/^$old_script_dir/$new_script_dir/" "$script_install_to/$file"
     fi
 
   done
