@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/usr/bin/env sh
 
 set -eu
 
@@ -52,7 +52,7 @@ __create_pre_commit_example() {
 }
 
 __update_script_dir() {
-  # Nothing to do if we're using teh default directory.
+  # Nothing to do if we're using the default directory.
   if [ "$script_install_dir" = "script" ]; then
     return
   fi
@@ -62,7 +62,7 @@ __update_script_dir() {
     new_script_dir="SCRIPT_DIR=\"$script_install_dir\""
 
     # shellcheck disable=SC2039
-    if [ "${OSTYPE#*darwin}" != "$OSTYPE" ]; then
+    if [ "$(uname -s)" = "darwin" ]; then
       # macOS without GNU sed, needs zero-length extension to skip backup. :(
       sed -i '' "s/^$old_script_dir/$new_script_dir/" "$script_install_to/$file"
     else
@@ -85,26 +85,7 @@ __print_help() {
   echo " "
 }
 
-__print_exit_message() {
-  cat <<-EOF
-
-You're now all set! Commit the new directory and/or files and everyone can enjoy
-the repository specific git hooks. To install the example hook (and any other
-hook), run the install script in "script/install-hooks".
-
-For a list of available git hooks, see https://githooks.com
-EOF
-
-# No makefile exists in project.
-if [ ! -e Makefile ]; then
-  return
-fi
-
-# Hook target already exist in Makefile.
-if grep -E '^hooks:' Makefile > /dev/null; then
-  return
-fi
-
+__print_make_message() {
 cat <<-EOF
 ---
 It looks like your project is using a Makefile. To add a target which will
@@ -117,6 +98,46 @@ echo "${red}.PHONY: hooks"
 echo "hooks:"
 echo "    @script/install-hooks"
 echo "${no_color}"
+}
+
+__print_just_message() {
+cat <<-EOF
+---
+It looks like your project is using a justfile. To add a recipe which will
+enable users to install all the project hooks, add the following to your
+justfile:
+
+EOF
+
+echo "${red}hooks:"
+echo "    @script/install-hooks"
+echo "${no_color}"
+}
+
+__print_exit_message() {
+  cat <<-EOF
+
+You're now all set! Commit the new directory and/or files and everyone can enjoy
+the repository specific git hooks. To install the example hook (and any other
+hook), run the install script in "script/install-hooks".
+
+For a list of available git hooks, see https://githooks.com
+EOF
+
+# Makefile exists in project.
+if [ -e Makefile ]; then
+  # Hook target already exist in Makefile.
+  if ! grep -E '^hooks:' Makefile > /dev/null; then
+    __print_make_message
+  fi
+fi
+
+if [ -e justfile ]; then
+  # Hook target already exist in justfile.
+  if ! grep -E '^hooks:' justfile > /dev/null; then
+    __print_just_message
+  fi
+fi
 }
 
 force=0
