@@ -62,7 +62,7 @@ __update_script_dir() {
     new_script_dir="SCRIPT_DIR=\"$script_install_dir\""
 
     # shellcheck disable=SC2039
-    if [ "$(uname -s)" = "darwin" ]; then
+    if [ "$(uname -s)" = "Darwin" ]; then
       # macOS without GNU sed, needs zero-length extension to skip backup. :(
       sed -i '' "s/^$old_script_dir/$new_script_dir/" "$script_install_to/$file"
     else
