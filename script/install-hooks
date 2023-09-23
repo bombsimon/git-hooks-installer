@@ -2,6 +2,20 @@
 
 set -eu
 
+uninstall=
+
+while test $# -gt 0; do
+  case "$1" in
+    -u|--uninstall)
+      shift
+      uninstall=1
+      ;;
+    *)
+      break
+      ;;
+  esac
+done
+
 # The directory in the project where project specific hooks are stored.
 SCRIPT_DIR="script"
 
@@ -14,19 +28,39 @@ HOOK_NAMES="applypatch-msg pre-applypatch post-applypatch \
 # Get locations of project hooks.
 HOOK_DIR=$(git rev-parse --show-toplevel)/.git/hooks
 
-echo "Installing hooks to your project!"
+__install() {
+  echo "Installing hooks to your project!"
 
-for hook in $HOOK_NAMES; do
-  # If a hook with the same name exists and is executable but not a symlink,
-  # back it up with the suffix `local`.
-  if [ ! -h "$HOOK_DIR/$hook" ] && [ -x "$HOOK_DIR/$hook" ]; then
-    mv "$HOOK_DIR/$hook" "$HOOK_DIR/$hook.local"
-  fi
+  for hook in $HOOK_NAMES; do
+    # If a hook with the same name exists and is executable but not a symlink,
+    # back it up with the suffix `local`.
+    if [ ! -h "$HOOK_DIR/$hook" ] && [ -x "$HOOK_DIR/$hook" ]; then
+      mv "$HOOK_DIR/$hook" "$HOOK_DIR/$hook.local"
+    fi
 
-  # Create symlink, overwriting the file if it exists probably the only way
-  # this would happen is if you're using an old version of git -- back when
-  # the sample hooks were not executable, instead of being named ____.sample
-  ln -s -f "../../$SCRIPT_DIR/hook-wrapper" "$HOOK_DIR/$hook"
-done
+    # Create symlink, overwriting the file if it exists probably the only way
+    # this would happen is if you're using an old version of git -- back when
+    # the sample hooks were not executable, instead of being named ____.sample
+    ln -s -f "../../$SCRIPT_DIR/hook-wrapper" "$HOOK_DIR/$hook"
+  done
+}
+
+__uninstall() {
+  echo "Uninstalling hooks from your project!"
+
+  # Remove all symlinks that point to ../../$SCRIPT_DIR
+  find "$HOOK_DIR" -type l -exec rm {} \;
+
+  # Restore originals
+  find "$HOOK_DIR" \
+    -name "*.local" \
+    -exec sh -c 'mv $1 "${1%.local}"' shell {} \;
+}
+
+if [ -z "$uninstall" ]; then
+  __install
+else
+  __uninstall
+fi
 
 # vim set ts=4 sw=4 et:
